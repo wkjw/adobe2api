@@ -51,6 +51,18 @@ Run in this folder (`D:\my_project\adobe2api`).
 
 - `GET /api/v1/health`
 
+- `POST /api/v1/refresh-profile/import`
+  - import refresh bundle from `at-refresh-capture-extension`
+
+- `GET /api/v1/refresh-profile/status`
+  - read auto-refresh status
+
+- `POST /api/v1/refresh-profile/refresh-now`
+  - trigger one immediate refresh attempt
+
+- `DELETE /api/v1/refresh-profile`
+  - clear imported refresh bundle
+
 ## UI
 
 Open:
@@ -67,3 +79,4 @@ Config files are stored in:
 
 - `config/config.json`
 - `config/tokens.json`
+- `config/refresh_profile.json`

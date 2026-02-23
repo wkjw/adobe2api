@@ -27,14 +27,11 @@
 
     <!-- Tokens Tab -->
     <div id="tokens" class="tab-pane active">
-      <section class="add-token-card card">
-        <h2>添加 Token</h2>
-        <div class="add-form">
-          <textarea id="tokenInput" placeholder="在此处粘贴抓取到的 Bearer Token (例如 eyJhbGciOiJSUz...)"></textarea>
-          <div class="actions">
-            <button id="addBtn">确认添加</button>
-            <span id="addMsg" class="msg"></span>
-          </div>
+      <section class="card quick-actions-card">
+        <h2>快捷操作</h2>
+        <div class="actions">
+          <button id="openAddTokenModalBtn">添加 Token</button>
+          <button id="openRefreshModalBtn" class="secondary">导入 Refresh Bundle</button>
         </div>
       </section>
 
@@ -50,6 +47,7 @@
                 <th>ID</th>
                 <th>Token (脱敏展示)</th>
                 <th>状态</th>
+                <th>自动刷新</th>
                 <th>失败次数</th>
                 <th>有效期</th>
                 <th>操作</th>
@@ -57,7 +55,7 @@
             </thead>
             <tbody>
               <tr>
-                <td colspan="6" class="empty-state">加载中...</td>
+                <td colspan="7" class="empty-state">加载中...</td>
               </tr>
             </tbody>
           </table>
@@ -138,6 +136,52 @@
     </div>
 
   </main>
+
+  <div id="tokenModal" class="dialog-modal" aria-hidden="true">
+    <div class="dialog-card" role="dialog" aria-modal="true" aria-label="添加 Token">
+      <div class="list-head" style="margin-bottom: 10px;">
+        <h2>添加 Token</h2>
+        <button id="tokenModalCloseBtn" class="secondary small" type="button">关闭</button>
+      </div>
+      <div class="add-form">
+        <textarea id="tokenInput" placeholder="在此处粘贴抓取到的 Bearer Token (例如 eyJhbGciOiJSUz...)"></textarea>
+        <div class="actions">
+          <button id="addBtn">确认添加</button>
+          <span id="addMsg" class="msg"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="refreshModal" class="dialog-modal" aria-hidden="true">
+    <div class="dialog-card" role="dialog" aria-modal="true" aria-label="导入 Refresh Bundle">
+      <div class="list-head" style="margin-bottom: 10px;">
+        <h2>AT 自动刷新</h2>
+        <button id="refreshModalCloseBtn" class="secondary small" type="button">关闭</button>
+      </div>
+      <div class="config-form">
+        <div class="form-group">
+          <label for="refreshBundleInput">导入 Refresh Bundle(JSON)</label>
+          <textarea id="refreshBundleInput" rows="7" placeholder="粘贴插件导出的 adobe_refresh_bundle JSON"></textarea>
+          <p class="help">仅在导入后启用自动刷新。JSON 含敏感 Cookie，请谨慎保管。</p>
+        </div>
+
+        <div class="form-group">
+          <label for="refreshBundleFile">或上传 JSON 文件</label>
+          <input type="file" id="refreshBundleFile" accept="application/json,.json" />
+        </div>
+
+        <div class="actions">
+          <button id="importRefreshBtn">导入</button>
+          <button id="refreshNowBtn" class="secondary">立即测试刷新</button>
+          <button id="clearRefreshBtn" class="danger">清除导入</button>
+        </div>
+
+        <div id="refreshStatus" class="refresh-status">自动刷新未启用</div>
+        <span id="refreshMsg" class="msg"></span>
+      </div>
+    </div>
+  </div>
 
   <div id="previewModal" class="preview-modal" aria-hidden="true">
     <div class="preview-modal-dialog" role="dialog" aria-modal="true" aria-label="媒体预览">

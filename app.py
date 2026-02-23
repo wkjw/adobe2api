@@ -31,6 +31,7 @@ except Exception:
 
 from core.token_mgr import token_manager
 from core.config_mgr import config_manager
+from core.refresh_mgr import refresh_manager
 
 
 logger = logging.getLogger("adobe2api")
@@ -702,6 +703,7 @@ app.mount("/generated", StaticFiles(directory=GENERATED_DIR), name="generated_fi
 store = JobStore()
 log_store = RequestLogStore(DATA_DIR / "request_logs.jsonl")
 client = AdobeClient()
+refresh_manager.start()
 
 
 def _extract_logging_fields(raw_body: bytes) -> dict[str, Optional[str]]:
@@ -813,6 +815,10 @@ class ConfigUpdateRequest(BaseModel):
     proxy: Optional[str] = None
     use_proxy: Optional[bool] = None
     generate_timeout: Optional[int] = None
+
+
+class RefreshBundleImportRequest(BaseModel):
+    bundle: dict
 
 
 def _resolve_model(model_id: Optional[str]) -> dict:
@@ -1196,6 +1202,36 @@ def update_config(req: ConfigUpdateRequest):
     config_manager.update_all(update_data)
     client.apply_config(config_manager.get_all())
     return config_manager.get_all()
+
+
+@app.get("/api/v1/refresh-profile/status")
+def refresh_profile_status():
+    return refresh_manager.status()
+
+
+@app.post("/api/v1/refresh-profile/import")
+def refresh_profile_import(req: RefreshBundleImportRequest):
+    try:
+        refresh_manager.import_bundle(req.bundle)
+        return {"status": "ok", "detail": "refresh profile imported"}
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@app.post("/api/v1/refresh-profile/refresh-now")
+def refresh_profile_refresh_now():
+    try:
+        return refresh_manager.refresh_once()
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.delete("/api/v1/refresh-profile")
+def refresh_profile_clear():
+    refresh_manager.clear_bundle()
+    return {"status": "ok"}
 
 
 # --- Generation API (OpenAI Compatible structure) ---

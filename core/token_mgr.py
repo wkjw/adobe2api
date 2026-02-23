@@ -46,14 +46,18 @@ class TokenManager:
     def save(self):
         DATA_FILE.write_text(json.dumps(self.tokens, indent=2), encoding="utf-8")
 
-    def add(self, value: str):
+    def add(self, value: str, meta: Optional[Dict] = None):
         with self._lock:
             value = value.strip()
             if value.startswith("Bearer "):
                 value = value[7:].strip()
+            meta = dict(meta or {})
                 
             for t in self.tokens:
                 if t["value"] == value:
+                    if meta:
+                        t.update(meta)
+                        self.save()
                     return t
             
             new_token = {
@@ -64,9 +68,47 @@ class TokenManager:
                 "added_at": time.time(),
                 "error_until": 0,
             }
+            if meta:
+                new_token.update(meta)
             self.tokens.append(new_token)
             self.save()
             return new_token
+
+    def upsert_auto_refresh_token(self, value: str):
+        with self._lock:
+            value = value.strip()
+            if value.startswith("Bearer "):
+                value = value[7:].strip()
+
+            # Keep only one auto-refresh token record.
+            auto_entries = [t for t in self.tokens if t.get("auto_refresh") is True]
+            now_ts = time.time()
+            if auto_entries:
+                target = auto_entries[0]
+                target["value"] = value
+                target["status"] = "active"
+                target["fails"] = 0
+                target["error_until"] = 0
+                target["updated_at"] = now_ts
+                for extra in auto_entries[1:]:
+                    self.tokens = [t for t in self.tokens if t is not extra]
+                self.save()
+                return dict(target)
+
+            new_token = {
+                "id": uuid.uuid4().hex[:8],
+                "value": value,
+                "status": "active",
+                "fails": 0,
+                "added_at": now_ts,
+                "updated_at": now_ts,
+                "error_until": 0,
+                "source": "auto_refresh",
+                "auto_refresh": True,
+            }
+            self.tokens.append(new_token)
+            self.save()
+            return dict(new_token)
 
     def remove(self, tid: str):
         with self._lock:
@@ -150,7 +192,7 @@ class TokenManager:
             self.save()
 
     @staticmethod
-    def _decode_jwt_exp(value: str) -> Optional[int]:
+    def _decode_jwt_payload(value: str) -> Optional[dict]:
         token = str(value or "").strip()
         parts = token.split(".")
         if len(parts) < 2:
@@ -160,12 +202,41 @@ class TokenManager:
         try:
             raw = base64.urlsafe_b64decode(payload.encode("utf-8"))
             data = json.loads(raw.decode("utf-8", errors="ignore"))
-            exp = data.get("exp")
-            if isinstance(exp, (int, float)):
-                return int(exp)
+            if isinstance(data, dict):
+                return data
         except Exception:
             return None
         return None
+
+    @classmethod
+    def _decode_jwt_exp(cls, value: str) -> Optional[int]:
+        data = cls._decode_jwt_payload(value)
+        if not data:
+            return None
+
+        exp = data.get("exp")
+        if isinstance(exp, (int, float)):
+            return int(exp)
+
+        # Adobe tokens often expose created_at + expires_in in payload instead of exp.
+        created_at = data.get("created_at")
+        expires_in = data.get("expires_in")
+        try:
+            created_at_val = int(str(created_at).strip())
+            expires_in_val = int(str(expires_in).strip())
+        except Exception:
+            return None
+
+        if created_at_val <= 0 or expires_in_val <= 0:
+            return None
+
+        # Some fields are milliseconds (e.g. 1771862511913 / 86400000)
+        if created_at_val > 10_000_000_000:
+            created_at_val = int(created_at_val / 1000)
+        if expires_in_val > 86400 * 2:
+            expires_in_val = int(expires_in_val / 1000)
+
+        return created_at_val + expires_in_val
 
     def list_all(self):
         with self._lock:
@@ -191,6 +262,8 @@ class TokenManager:
                     "fails": t["fails"],
                     "added_at": t["added_at"],
                     "error_until": t.get("error_until", 0),
+                    "source": t.get("source", "manual"),
+                    "auto_refresh": bool(t.get("auto_refresh", False)),
                     "expires_at": exp_ts,
                     "expires_at_text": exp_readable,
                     "remaining_seconds": remaining_seconds,

@@ -1,0 +1,22 @@
+{
+  "type": "adobe_refresh_bundle",
+  "version": 1,
+  "imported_at": 0,
+  "endpoint": {
+    "url": "https://adobeid-na1.services.adobe.com/ims/check/v6/token?jslVersion=v2-v0.48.0-1-g1e322cb",
+    "method": "POST",
+    "form": {
+      "client_id": "clio-playground-web",
+      "guest_allowed": "true",
+      "scope": "AdobeID,firefly_api,openid"
+    },
+    "headers": {
+      "Cookie": "<sensitive>",
+      "Origin": "https://firefly.adobe.com",
+      "Referer": "https://firefly.adobe.com/",
+      "User-Agent": "Mozilla/5.0",
+      "Accept-Language": "en-US,en;q=0.9",
+      "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"
+    }
+  }
+}
