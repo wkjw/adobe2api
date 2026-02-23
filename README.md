@@ -63,6 +63,31 @@ Service API key is configured in `config/config.json` (`api_key`).
 
 ## 3) External API usage
 
+### 3.0 Supported model families
+
+Current supported model families are:
+
+- `firefly-nano-banana-pro-*` (image)
+- `firefly-sora2-*` (video)
+
+Nano Banana Pro image models:
+
+- Pattern: `firefly-nano-banana-pro-{resolution}-{ratio}`
+- Resolution: `1k` / `2k` / `4k`
+- Ratio suffix: `1x1` / `16x9` / `9x16` / `4x3` / `3x4`
+- Examples:
+  - `firefly-nano-banana-pro-2k-16x9`
+  - `firefly-nano-banana-pro-4k-1x1`
+
+Sora2 video models:
+
+- Pattern: `firefly-sora2-{duration}-{ratio}`
+- Duration: `4s` / `8s` / `12s`
+- Ratio: `9x16` / `16x9`
+- Examples:
+  - `firefly-sora2-4s-16x9`
+  - `firefly-sora2-8s-9x16`
+
 ### 3.1 List models
 
 ```bash
