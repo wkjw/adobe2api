@@ -67,12 +67,36 @@ for _res in ("1k", "2k", "4k"):
         }
 DEFAULT_MODEL_ID = "firefly-nano-banana-pro-2k-16x9"
 VIDEO_MODEL_CATALOG = {
-    "firefly-sora2-4s-9x16": {"duration": 4, "aspect_ratio": "9:16", "description": "Firefly Sora2 video model (4s 9:16)"},
-    "firefly-sora2-4s-16x9": {"duration": 4, "aspect_ratio": "16:9", "description": "Firefly Sora2 video model (4s 16:9)"},
-    "firefly-sora2-8s-9x16": {"duration": 8, "aspect_ratio": "9:16", "description": "Firefly Sora2 video model (8s 9:16)"},
-    "firefly-sora2-8s-16x9": {"duration": 8, "aspect_ratio": "16:9", "description": "Firefly Sora2 video model (8s 16:9)"},
-    "firefly-sora2-12s-9x16": {"duration": 12, "aspect_ratio": "9:16", "description": "Firefly Sora2 video model (12s 9:16)"},
-    "firefly-sora2-12s-16x9": {"duration": 12, "aspect_ratio": "16:9", "description": "Firefly Sora2 video model (12s 16:9)"},
+    "firefly-sora2-4s-9x16": {
+        "duration": 4,
+        "aspect_ratio": "9:16",
+        "description": "Firefly Sora2 video model (4s 9:16)",
+    },
+    "firefly-sora2-4s-16x9": {
+        "duration": 4,
+        "aspect_ratio": "16:9",
+        "description": "Firefly Sora2 video model (4s 16:9)",
+    },
+    "firefly-sora2-8s-9x16": {
+        "duration": 8,
+        "aspect_ratio": "9:16",
+        "description": "Firefly Sora2 video model (8s 9:16)",
+    },
+    "firefly-sora2-8s-16x9": {
+        "duration": 8,
+        "aspect_ratio": "16:9",
+        "description": "Firefly Sora2 video model (8s 16:9)",
+    },
+    "firefly-sora2-12s-9x16": {
+        "duration": 12,
+        "aspect_ratio": "9:16",
+        "description": "Firefly Sora2 video model (12s 9:16)",
+    },
+    "firefly-sora2-12s-16x9": {
+        "duration": 12,
+        "aspect_ratio": "16:9",
+        "description": "Firefly Sora2 video model (12s 16:9)",
+    },
 }
 
 for _dur in (4, 6, 8):
@@ -92,8 +116,10 @@ for _dur in (4, 6, 8):
 class AdobeRequestError(Exception):
     pass
 
+
 class QuotaExhaustedError(AdobeRequestError):
     pass
+
 
 class AuthError(AdobeRequestError):
     pass
@@ -114,7 +140,9 @@ class AdobeClient:
         self.proxy = ""
         self.generate_timeout = 300
         self.user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
-        self.sec_ch_ua = '"Not:A-Brand";v="99", "Google Chrome";v="145", "Chromium";v="145"'
+        self.sec_ch_ua = (
+            '"Not:A-Brand";v="99", "Google Chrome";v="145", "Chromium";v="145"'
+        )
 
         self.apply_config(config_manager.get_all())
 
@@ -221,19 +249,37 @@ class AdobeClient:
     def _post_json(self, url: str, headers: dict, payload: dict):
         session = self._session()
         if session is None:
-            return requests.post(url, headers=headers, json=payload, timeout=20, proxies=self._requests_proxies())
+            return requests.post(
+                url,
+                headers=headers,
+                json=payload,
+                timeout=20,
+                proxies=self._requests_proxies(),
+            )
         with session:
             resp = session.post(url, headers=headers, json=payload)
         # Some environments return intermittent 451 via curl_cffi path.
         # Retry once with plain requests for better stability.
         if resp.status_code == 451:
-            return requests.post(url, headers=headers, json=payload, timeout=20, proxies=self._requests_proxies())
+            return requests.post(
+                url,
+                headers=headers,
+                json=payload,
+                timeout=20,
+                proxies=self._requests_proxies(),
+            )
         return resp
 
     def _post_bytes(self, url: str, headers: dict, payload: bytes):
         session = self._session()
         if session is None:
-            return requests.post(url, headers=headers, data=payload, timeout=30, proxies=self._requests_proxies())
+            return requests.post(
+                url,
+                headers=headers,
+                data=payload,
+                timeout=30,
+                proxies=self._requests_proxies(),
+            )
         with session:
             resp = session.post(url, headers=headers, data=payload)
         return resp
@@ -241,7 +287,9 @@ class AdobeClient:
     def _get(self, url: str, headers: dict, timeout: int = 20):
         session = self._session()
         if session is None:
-            return requests.get(url, headers=headers, timeout=timeout, proxies=self._requests_proxies())
+            return requests.get(
+                url, headers=headers, timeout=timeout, proxies=self._requests_proxies()
+            )
         with session:
             resp = session.get(url, headers=headers)
         return resp
@@ -275,7 +323,9 @@ class AdobeClient:
             }
         return ratio_map.get(ratio, ratio_map["16:9"])
 
-    def upload_image(self, token: str, image_bytes: bytes, mime_type: str = "image/jpeg") -> str:
+    def upload_image(
+        self, token: str, image_bytes: bytes, mime_type: str = "image/jpeg"
+    ) -> str:
         if not image_bytes:
             raise AdobeRequestError("image is empty")
 
@@ -290,7 +340,9 @@ class AdobeClient:
         if resp.status_code in (401, 403):
             raise AuthError("Token invalid or expired")
         if resp.status_code != 200:
-            raise AdobeRequestError(f"upload image failed: {resp.status_code} {resp.text[:300]}")
+            raise AdobeRequestError(
+                f"upload image failed: {resp.status_code} {resp.text[:300]}"
+            )
 
         try:
             data = resp.json()
@@ -335,7 +387,9 @@ class AdobeClient:
         edited["generationMetadata"] = {"module": "image2image"}
 
         c1 = dict(edited)
-        c1["referenceBlobs"] = [{"id": img_id, "usage": "general"} for img_id in source_image_ids]
+        c1["referenceBlobs"] = [
+            {"id": img_id, "usage": "general"} for img_id in source_image_ids
+        ]
         candidates.append(c1)
 
         c4 = dict(edited)
@@ -392,7 +446,9 @@ class AdobeClient:
         return ""
 
     @staticmethod
-    def _build_video_prompt_json(prompt: str, duration: int, negative_prompt: str = "") -> str:
+    def _build_video_prompt_json(
+        prompt: str, duration: int, negative_prompt: str = ""
+    ) -> str:
         payload = {
             "id": 1,
             "duration_sec": int(duration),
@@ -414,7 +470,9 @@ class AdobeClient:
     ) -> dict:
         seed_val = int(time.time()) % 999999
         engine = str(video_conf.get("engine") or "sora2")
-        upstream_model = str(video_conf.get("upstream_model") or "openai:firefly:colligo:sora2")
+        upstream_model = str(
+            video_conf.get("upstream_model") or "openai:firefly:colligo:sora2"
+        )
         resolution = str(video_conf.get("resolution") or "720p")
         if engine == "veo31-fast":
             payload = {
@@ -455,7 +513,9 @@ class AdobeClient:
             "size": self._video_size(aspect_ratio, resolution),
             "duration": int(duration),
             "fps": 24,
-            "prompt": self._build_video_prompt_json(prompt=prompt, duration=duration, negative_prompt=negative_prompt),
+            "prompt": self._build_video_prompt_json(
+                prompt=prompt, duration=duration, negative_prompt=negative_prompt
+            ),
             "generationMetadata": {"module": "text2video"},
             "model": upstream_model,
             "generateAudio": bool(generate_audio),
@@ -483,11 +543,15 @@ class AdobeClient:
         }
         if source_image_ids:
             first_id = str(source_image_ids[0])
-            payload["referenceBlobs"] = [{"id": first_id, "usage": "general", "promptReference": 1}]
+            payload["referenceBlobs"] = [
+                {"id": first_id, "usage": "general", "promptReference": 1}
+            ]
             reference_frames = [{"localBlobRef": first_id}, None]
             if engine == "veo31-fast" and len(source_image_ids) > 1:
                 last_id = str(source_image_ids[1])
-                payload["referenceBlobs"].append({"id": last_id, "usage": "general", "promptReference": 2})
+                payload["referenceBlobs"].append(
+                    {"id": last_id, "usage": "general", "promptReference": 2}
+                )
                 reference_frames[1] = {"localBlobRef": last_id}
             payload["referenceFrames"] = reference_frames
         return payload
@@ -514,7 +578,9 @@ class AdobeClient:
             negative_prompt=negative_prompt,
             generate_audio=generate_audio,
         )
-        submit_resp = self._post_json(self.video_submit_url, headers=self._submit_headers(token), payload=payload)
+        submit_resp = self._post_json(
+            self.video_submit_url, headers=self._submit_headers(token), payload=payload
+        )
 
         if submit_resp.status_code in (401, 403):
             access_error = submit_resp.headers.get("x-access-error")
@@ -524,11 +590,17 @@ class AdobeClient:
 
         if submit_resp.status_code != 200:
             if submit_resp.status_code in (429, 451) or submit_resp.status_code >= 500:
-                raise UpstreamTemporaryError(f"video submit failed: {submit_resp.status_code} {submit_resp.text[:300]}")
-            raise AdobeRequestError(f"video submit failed: {submit_resp.status_code} {submit_resp.text[:300]}")
+                raise UpstreamTemporaryError(
+                    f"video submit failed: {submit_resp.status_code} {submit_resp.text[:300]}"
+                )
+            raise AdobeRequestError(
+                f"video submit failed: {submit_resp.status_code} {submit_resp.text[:300]}"
+            )
 
         submit_data = submit_resp.json()
-        poll_url = submit_resp.headers.get("x-override-status-link") or ((submit_data.get("links") or {}).get("result") or {}).get("href")
+        poll_url = submit_resp.headers.get("x-override-status-link") or (
+            (submit_data.get("links") or {}).get("result") or {}
+        ).get("href")
         if not poll_url:
             raise AdobeRequestError("video submit succeeded but no poll url returned")
         poll_url = self._normalize_video_poll_url(str(poll_url))
@@ -540,7 +612,8 @@ class AdobeClient:
                         "task_status": "IN_PROGRESS",
                         "task_progress": 0.0,
                         "upstream_job_id": upstream_job_id,
-                        "retry_after": int(submit_resp.headers.get("retry-after") or 0) or None,
+                        "retry_after": int(submit_resp.headers.get("retry-after") or 0)
+                        or None,
                     }
                 )
             except Exception:
@@ -548,13 +621,19 @@ class AdobeClient:
 
         start = time.time()
         while True:
-            poll_resp = self._get(poll_url, headers=self._poll_headers(token), timeout=20)
+            poll_resp = self._get(
+                poll_url, headers=self._poll_headers(token), timeout=20
+            )
             if poll_resp.status_code in (401, 403):
                 raise AuthError("Token invalid or expired")
             if poll_resp.status_code != 200:
                 if poll_resp.status_code in (429, 451) or poll_resp.status_code >= 500:
-                    raise UpstreamTemporaryError(f"video poll failed: {poll_resp.status_code} {poll_resp.text[:300]}")
-                raise AdobeRequestError(f"video poll failed: {poll_resp.status_code} {poll_resp.text[:300]}")
+                    raise UpstreamTemporaryError(
+                        f"video poll failed: {poll_resp.status_code} {poll_resp.text[:300]}"
+                    )
+                raise AdobeRequestError(
+                    f"video poll failed: {poll_resp.status_code} {poll_resp.text[:300]}"
+                )
 
             latest = poll_resp.json()
             status_header = str(poll_resp.headers.get("x-task-status") or "").upper()
@@ -574,9 +653,14 @@ class AdobeClient:
                     progress_cb(
                         {
                             "task_status": "IN_PROGRESS",
-                            "task_progress": progress_val if progress_val is not None else 0.0,
+                            "task_progress": progress_val
+                            if progress_val is not None
+                            else 0.0,
                             "upstream_job_id": upstream_job_id,
-                            "retry_after": int(poll_resp.headers.get("retry-after") or 0) or None,
+                            "retry_after": int(
+                                poll_resp.headers.get("retry-after") or 0
+                            )
+                            or None,
                         }
                     )
                 except Exception:
@@ -584,7 +668,7 @@ class AdobeClient:
 
             outputs = latest.get("outputs") or []
             if outputs:
-                video_url = (((outputs[0] or {}).get("video") or {}).get("presignedUrl"))
+                video_url = ((outputs[0] or {}).get("video") or {}).get("presignedUrl")
                 if not video_url:
                     raise AdobeRequestError("video job finished without video url")
                 video_resp = self._get(video_url, headers={"accept": "*/*"}, timeout=60)
@@ -609,7 +693,9 @@ class AdobeClient:
                         progress_cb(
                             {
                                 "task_status": "FAILED",
-                                "task_progress": progress_val if progress_val is not None else 0.0,
+                                "task_progress": progress_val
+                                if progress_val is not None
+                                else 0.0,
                                 "upstream_job_id": upstream_job_id,
                                 "retry_after": None,
                                 "error": f"video job failed: {latest}",
@@ -625,7 +711,10 @@ class AdobeClient:
                         progress_cb(
                             {
                                 "task_status": "FAILED",
-                                "task_progress": progress_val if 'progress_val' in locals() and progress_val is not None else 0.0,
+                                "task_progress": progress_val
+                                if "progress_val" in locals()
+                                and progress_val is not None
+                                else 0.0,
                                 "upstream_job_id": upstream_job_id,
                                 "retry_after": None,
                                 "error": "video generation timed out",
@@ -655,7 +744,9 @@ class AdobeClient:
             source_image_ids=source_image_ids,
         ):
             # 禁用重试等，最大程度节省资源
-            submit_resp = self._post_json(self.submit_url, headers=self._submit_headers(token), payload=payload)
+            submit_resp = self._post_json(
+                self.submit_url, headers=self._submit_headers(token), payload=payload
+            )
             if submit_resp.status_code == 200:
                 break
 
@@ -686,13 +777,21 @@ class AdobeClient:
                 submit_resp.text[:500],
             )
             if submit_resp.status_code in (429, 451) or submit_resp.status_code >= 500:
-                raise UpstreamTemporaryError(f"submit failed: {submit_resp.status_code} {submit_resp.text[:300]}")
+                raise UpstreamTemporaryError(
+                    f"submit failed: {submit_resp.status_code} {submit_resp.text[:300]}"
+                )
             if last_error:
-                raise AdobeRequestError(f"submit failed: {submit_resp.status_code} {last_error}")
-            raise AdobeRequestError(f"submit failed: {submit_resp.status_code} {submit_resp.text[:300]}")
+                raise AdobeRequestError(
+                    f"submit failed: {submit_resp.status_code} {last_error}"
+                )
+            raise AdobeRequestError(
+                f"submit failed: {submit_resp.status_code} {submit_resp.text[:300]}"
+            )
 
         submit_data = submit_resp.json()
-        poll_url = submit_resp.headers.get("x-override-status-link") or ((submit_data.get("links") or {}).get("result") or {}).get("href")
+        poll_url = submit_resp.headers.get("x-override-status-link") or (
+            (submit_data.get("links") or {}).get("result") or {}
+        ).get("href")
         if not poll_url:
             raise AdobeRequestError("submit succeeded but no poll url returned")
 
@@ -704,7 +803,8 @@ class AdobeClient:
                         "task_status": "IN_PROGRESS",
                         "task_progress": 0.0,
                         "upstream_job_id": upstream_job_id,
-                        "retry_after": int(submit_resp.headers.get("retry-after") or 0) or None,
+                        "retry_after": int(submit_resp.headers.get("retry-after") or 0)
+                        or None,
                     }
                 )
             except Exception:
@@ -715,15 +815,19 @@ class AdobeClient:
         # 延长轮询间隔，减少请求次数
         sleep_time = 3.0
         while True:
-            poll_resp = self._get(poll_url, headers=self._poll_headers(token), timeout=20)
+            poll_resp = self._get(
+                poll_url, headers=self._poll_headers(token), timeout=20
+            )
             if poll_resp.status_code != 200:
                 logger.error(
                     "poll failed status=%s body=%s",
                     poll_resp.status_code,
                     poll_resp.text[:500],
                 )
-                raise AdobeRequestError(f"poll failed: {poll_resp.status_code} {poll_resp.text[:300]}")
-            
+                raise AdobeRequestError(
+                    f"poll failed: {poll_resp.status_code} {poll_resp.text[:300]}"
+                )
+
             latest = poll_resp.json()
             status_header = str(poll_resp.headers.get("x-task-status") or "").upper()
             status_val = str(latest.get("status") or "").upper() or status_header
@@ -742,9 +846,14 @@ class AdobeClient:
                     progress_cb(
                         {
                             "task_status": "IN_PROGRESS",
-                            "task_progress": progress_val if progress_val is not None else 0.0,
+                            "task_progress": progress_val
+                            if progress_val is not None
+                            else 0.0,
                             "upstream_job_id": upstream_job_id,
-                            "retry_after": int(poll_resp.headers.get("retry-after") or 0) or None,
+                            "retry_after": int(
+                                poll_resp.headers.get("retry-after") or 0
+                            )
+                            or None,
                         }
                     )
                 except Exception:
@@ -752,7 +861,7 @@ class AdobeClient:
 
             outputs = latest.get("outputs") or []
             if outputs:
-                image_url = (((outputs[0] or {}).get("image") or {}).get("presignedUrl"))
+                image_url = ((outputs[0] or {}).get("image") or {}).get("presignedUrl")
                 if not image_url:
                     raise AdobeRequestError("job finished without image url")
                 img_resp = self._get(image_url, headers={"accept": "*/*"}, timeout=30)
@@ -777,7 +886,9 @@ class AdobeClient:
                         progress_cb(
                             {
                                 "task_status": "FAILED",
-                                "task_progress": progress_val if progress_val is not None else 0.0,
+                                "task_progress": progress_val
+                                if progress_val is not None
+                                else 0.0,
                                 "upstream_job_id": upstream_job_id,
                                 "retry_after": None,
                                 "error": f"image job failed: {latest}",
@@ -793,7 +904,9 @@ class AdobeClient:
                         progress_cb(
                             {
                                 "task_status": "FAILED",
-                                "task_progress": progress_val if progress_val is not None else 0.0,
+                                "task_progress": progress_val
+                                if progress_val is not None
+                                else 0.0,
                                 "upstream_job_id": upstream_job_id,
                                 "retry_after": None,
                                 "error": "image generation timed out",
@@ -967,10 +1080,10 @@ class RequestLogStore:
 
 # 极简配置启动
 app = FastAPI(
-    title="adobe2api", 
+    title="adobe2api",
     version="0.1.0",
-    docs_url=None, # 关闭 swagger，节省资源
-    redoc_url=None
+    docs_url=None,  # 关闭 swagger，节省资源
+    redoc_url=None,
 )
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 app.mount("/generated", StaticFiles(directory=GENERATED_DIR), name="generated_files")
@@ -1089,7 +1202,11 @@ async def request_logger(request: Request, call_next):
         try:
             raw_body = await request.body()
             request._body = raw_body
-            if path in {"/v1/images/generations", "/v1/chat/completions", "/api/v1/generate"}:
+            if path in {
+                "/v1/images/generations",
+                "/v1/chat/completions",
+                "/api/v1/generate",
+            }:
                 body_meta = _extract_logging_fields(raw_body)
             request.state.log_id = uuid.uuid4().hex[:12]
         except Exception:
@@ -1100,7 +1217,13 @@ async def request_logger(request: Request, call_next):
         response = await call_next(request)
         status_code = response.status_code
     except Exception as exc:
-        error_text = str(exc)[:240]
+        error_text = f"{type(exc).__name__}: {str(exc)}"[:240]
+        logger.exception(
+            "Unhandled exception in request pipeline method=%s path=%s log_id=%s",
+            method,
+            path,
+            getattr(request.state, "log_id", ""),
+        )
         raise
     finally:
         if should_log:
@@ -1113,7 +1236,9 @@ async def request_logger(request: Request, call_next):
             upstream_job_id = getattr(request.state, "log_upstream_job_id", None)
             retry_after = getattr(request.state, "log_retry_after", None)
             error_final = getattr(request.state, "log_error", None) or error_text
-            log_id = str(getattr(request.state, "log_id", "") or "") or uuid.uuid4().hex[:12]
+            log_id = (
+                str(getattr(request.state, "log_id", "") or "") or uuid.uuid4().hex[:12]
+            )
             log_store.upsert(
                 log_id,
                 asdict(
@@ -1146,6 +1271,7 @@ class GenerateRequest(BaseModel):
     aspect_ratio: str = Field(default="16:9")
     output_resolution: str = Field(default="2K")
     model: Optional[str] = None
+
 
 class TokenAddRequest(BaseModel):
     token: str
@@ -1188,7 +1314,9 @@ def _ratio_from_size(size: str) -> str:
 
 def _resolve_video_options(data: dict) -> tuple[bool, str]:
     generate_audio = bool(data.get("generate_audio", data.get("generateAudio", True)))
-    negative_prompt = str(data.get("negative_prompt") or data.get("negativePrompt") or "").strip()
+    negative_prompt = str(
+        data.get("negative_prompt") or data.get("negativePrompt") or ""
+    ).strip()
     return generate_audio, negative_prompt
 
 
@@ -1295,12 +1423,20 @@ def _load_input_images(messages) -> list[tuple[bytes, str]]:
                 raise HTTPException(status_code=400, detail=str(exc))
         else:
             if not image_url.lower().startswith(("http://", "https://")):
-                raise HTTPException(status_code=400, detail="Only http/https or data URL images are supported")
+                raise HTTPException(
+                    status_code=400,
+                    detail="Only http/https or data URL images are supported",
+                )
             resp = requests.get(image_url, timeout=30)
             if resp.status_code != 200:
-                raise HTTPException(status_code=400, detail=f"Failed to fetch image_url: {resp.status_code}")
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Failed to fetch image_url: {resp.status_code}",
+                )
             image_bytes = resp.content
-            mime_type = (resp.headers.get("content-type") or "image/jpeg").split(";")[0].strip() or "image/jpeg"
+            mime_type = (resp.headers.get("content-type") or "image/jpeg").split(";")[
+                0
+            ].strip() or "image/jpeg"
 
         if not image_bytes:
             raise HTTPException(status_code=400, detail="image_url is empty")
@@ -1312,7 +1448,9 @@ def _load_input_images(messages) -> list[tuple[bytes, str]]:
     return loaded
 
 
-def _prepare_video_source_image(image_bytes: bytes, aspect_ratio: str, resolution: str = "720p") -> tuple[bytes, str]:
+def _prepare_video_source_image(
+    image_bytes: bytes, aspect_ratio: str, resolution: str = "720p"
+) -> tuple[bytes, str]:
     if not image_bytes:
         raise HTTPException(status_code=400, detail="image_url is empty")
     if Image is None:
@@ -1339,7 +1477,9 @@ def _prepare_video_source_image(image_bytes: bytes, aspect_ratio: str, resolutio
             resized = src.resize((new_w, new_h), Image.Resampling.LANCZOS)
             left = max(0, (new_w - target_size[0]) // 2)
             top = max(0, (new_h - target_size[1]) // 2)
-            cropped = resized.crop((left, top, left + target_size[0], top + target_size[1]))
+            cropped = resized.crop(
+                (left, top, left + target_size[0], top + target_size[1])
+            )
 
             out = io.BytesIO()
             cropped.save(out, format="PNG")
@@ -1350,8 +1490,12 @@ def _prepare_video_source_image(image_bytes: bytes, aspect_ratio: str, resolutio
         raise HTTPException(status_code=400, detail=f"invalid image for video: {exc}")
 
 
-def _resolve_ratio_and_resolution(data: dict, model_id: Optional[str]) -> tuple[str, str, str]:
-    ratio = str(data.get("aspect_ratio") or "").strip() or _ratio_from_size(data.get("size", "1024x1024"))
+def _resolve_ratio_and_resolution(
+    data: dict, model_id: Optional[str]
+) -> tuple[str, str, str]:
+    ratio = str(data.get("aspect_ratio") or "").strip() or _ratio_from_size(
+        data.get("size", "1024x1024")
+    )
     if ratio not in SUPPORTED_RATIOS:
         ratio = "1:1"
 
@@ -1449,6 +1593,7 @@ def _sse_chat_stream(payload: dict):
     yield f"data: {json.dumps(last, ensure_ascii=False)}\n\n"
     yield "data: [DONE]\n\n"
 
+
 @app.get("/api/v1/health")
 def health():
     return {"status": "ok", "pool_size": len(token_manager.list_all())}
@@ -1497,9 +1642,11 @@ def page_root():
 
 # --- Token Management APIs ---
 
+
 @app.get("/api/v1/tokens")
 def list_tokens():
     return {"tokens": token_manager.list_all()}
+
 
 @app.post("/api/v1/tokens")
 def add_token(req: TokenAddRequest):
@@ -1508,10 +1655,12 @@ def add_token(req: TokenAddRequest):
     token_manager.add(req.token)
     return {"status": "ok"}
 
+
 @app.delete("/api/v1/tokens/{tid}")
 def delete_token(tid: str):
     token_manager.remove(tid)
     return {"status": "ok"}
+
 
 @app.put("/api/v1/tokens/{tid}/status")
 def set_token_status(tid: str, status: str):
@@ -1521,7 +1670,10 @@ def set_token_status(tid: str, status: str):
     if not token_info:
         raise HTTPException(status_code=404, detail="token not found")
     if status == "active" and token_info.get("status") in {"exhausted", "invalid"}:
-        raise HTTPException(status_code=400, detail="exhausted/invalid token cannot be reactivated; replace with a fresh token")
+        raise HTTPException(
+            status_code=400,
+            detail="exhausted/invalid token cannot be reactivated; replace with a fresh token",
+        )
     token_manager.set_status(tid, status)
     return {"status": "ok"}
 
@@ -1554,9 +1706,15 @@ def update_config(req: ConfigUpdateRequest):
         try:
             interval_hours = int(incoming["refresh_interval_hours"])
         except Exception:
-            raise HTTPException(status_code=400, detail="refresh_interval_hours must be an integer between 1 and 24")
+            raise HTTPException(
+                status_code=400,
+                detail="refresh_interval_hours must be an integer between 1 and 24",
+            )
         if interval_hours < 1 or interval_hours > 24:
-            raise HTTPException(status_code=400, detail="refresh_interval_hours must be between 1 and 24")
+            raise HTTPException(
+                status_code=400,
+                detail="refresh_interval_hours must be between 1 and 24",
+            )
         update_data["refresh_interval_hours"] = interval_hours
     config_manager.update_all(update_data)
     client.apply_config(config_manager.get_all())
@@ -1595,6 +1753,7 @@ def refresh_profile_clear():
 
 # --- Generation API (OpenAI Compatible structure) ---
 
+
 @app.post("/v1/images/generations")
 def openai_generate(data: dict, request: Request):
     """
@@ -1604,19 +1763,47 @@ def openai_generate(data: dict, request: Request):
 
     prompt = data.get("prompt", "").strip()
     if not prompt:
-        return JSONResponse(status_code=400, content={"error": {"message": "prompt is required", "type": "invalid_request_error"}})
+        return JSONResponse(
+            status_code=400,
+            content={
+                "error": {
+                    "message": "prompt is required",
+                    "type": "invalid_request_error",
+                }
+            },
+        )
 
     model_id = data.get("model")
     if str(model_id or "").strip() in VIDEO_MODEL_CATALOG:
-        return JSONResponse(status_code=400, content={"error": {"message": "Use /v1/chat/completions for video generation", "type": "invalid_request_error"}})
-    ratio, output_resolution, resolved_model_id = _resolve_ratio_and_resolution(data, model_id)
+        return JSONResponse(
+            status_code=400,
+            content={
+                "error": {
+                    "message": "Use /v1/chat/completions for video generation",
+                    "type": "invalid_request_error",
+                }
+            },
+        )
+    ratio, output_resolution, resolved_model_id = _resolve_ratio_and_resolution(
+        data, model_id
+    )
 
     token = token_manager.get_available()
     if not token:
-        return JSONResponse(status_code=503, content={"error": {"message": "No active tokens available in the pool", "type": "server_error"}})
+        return JSONResponse(
+            status_code=503,
+            content={
+                "error": {
+                    "message": "No active tokens available in the pool",
+                    "type": "server_error",
+                }
+            },
+        )
 
     try:
-        _set_request_task_progress(request, task_status="IN_PROGRESS", task_progress=0.0)
+        _set_request_task_progress(
+            request, task_status="IN_PROGRESS", task_progress=0.0
+        )
 
         def _image_progress_cb(update: dict):
             _set_request_task_progress(
@@ -1636,37 +1823,77 @@ def openai_generate(data: dict, request: Request):
             timeout=client.generate_timeout,
             progress_cb=_image_progress_cb,
         )
-        
+
         # 保存图片以便通过URL返回
         job_id = uuid.uuid4().hex
         out_path = GENERATED_DIR / f"{job_id}.png"
         out_path.write_bytes(image_bytes)
-        
+
         image_url = _public_image_url(request, job_id)
         _set_request_preview(request, image_url, kind="image")
 
         return {
             "created": int(time.time()),
             "model": resolved_model_id,
-            "data": [
-                {"url": image_url}
-            ]
+            "data": [{"url": image_url}],
         }
-        
+
     except QuotaExhaustedError:
-        _set_request_task_progress(request, task_status="FAILED", task_progress=0.0, error="Token quota exhausted")
+        _set_request_task_progress(
+            request,
+            task_status="FAILED",
+            task_progress=0.0,
+            error="Token quota exhausted",
+        )
         token_manager.report_exhausted(token)
-        return JSONResponse(status_code=429, content={"error": {"message": "Token quota exhausted", "type": "rate_limit_error"}})
+        return JSONResponse(
+            status_code=429,
+            content={
+                "error": {
+                    "message": "Token quota exhausted",
+                    "type": "rate_limit_error",
+                }
+            },
+        )
     except AuthError:
-        _set_request_task_progress(request, task_status="FAILED", task_progress=0.0, error="Token invalid or expired")
+        _set_request_task_progress(
+            request,
+            task_status="FAILED",
+            task_progress=0.0,
+            error="Token invalid or expired",
+        )
         token_manager.report_invalid(token)
-        return JSONResponse(status_code=401, content={"error": {"message": "Token invalid or expired", "type": "authentication_error"}})
+        return JSONResponse(
+            status_code=401,
+            content={
+                "error": {
+                    "message": "Token invalid or expired",
+                    "type": "authentication_error",
+                }
+            },
+        )
     except UpstreamTemporaryError as exc:
-        _set_request_task_progress(request, task_status="FAILED", task_progress=0.0, error=str(exc))
-        return JSONResponse(status_code=503, content={"error": {"message": str(exc), "type": "server_error"}})
+        _set_request_task_progress(
+            request, task_status="FAILED", task_progress=0.0, error=str(exc)
+        )
+        return JSONResponse(
+            status_code=503,
+            content={"error": {"message": str(exc), "type": "server_error"}},
+        )
     except Exception as exc:
-        _set_request_task_progress(request, task_status="FAILED", task_progress=0.0, error=str(exc))
-        return JSONResponse(status_code=500, content={"error": {"message": str(exc), "type": "server_error"}})
+        logger.exception(
+            "Unhandled error in /v1/images/generations log_id=%s model=%s proxy_used=%s",
+            getattr(request.state, "log_id", ""),
+            resolved_model_id,
+            bool(client.proxy),
+        )
+        _set_request_task_progress(
+            request, task_status="FAILED", task_progress=0.0, error=str(exc)
+        )
+        return JSONResponse(
+            status_code=500,
+            content={"error": {"message": str(exc), "type": "server_error"}},
+        )
 
 
 @app.post("/api/v1/generate")
@@ -1695,12 +1922,14 @@ def create_job(data: GenerateRequest, request: Request):
 
     def runner(job_id: str):
         store.update(job_id, status="running", progress=5.0)
-        
+
         token = token_manager.get_available()
         if not token:
-            store.update(job_id, status="failed", error="No active tokens available in the pool")
+            store.update(
+                job_id, status="failed", error="No active tokens available in the pool"
+            )
             return
-            
+
         try:
             image_bytes, meta = client.generate(
                 token=token,
@@ -1712,7 +1941,12 @@ def create_job(data: GenerateRequest, request: Request):
             out_path.write_bytes(image_bytes)
             progress = float(meta.get("progress") or 100.0)
             image_url = f"{base_url}/generated/{job_id}.png"
-            store.update(job_id, status="succeeded", progress=max(progress, 100.0), image_url=image_url)
+            store.update(
+                job_id,
+                status="succeeded",
+                progress=max(progress, 100.0),
+                image_url=image_url,
+            )
         except QuotaExhaustedError as exc:
             token_manager.report_exhausted(token)
             store.update(job_id, status="failed", error="Token quota exhausted.")
@@ -1749,7 +1983,12 @@ def chat_completions(data: dict, request: Request):
     if not prompt:
         return JSONResponse(
             status_code=400,
-            content={"error": {"message": "messages or prompt is required", "type": "invalid_request_error"}},
+            content={
+                "error": {
+                    "message": "messages or prompt is required",
+                    "type": "invalid_request_error",
+                }
+            },
         )
 
     model_id = str(data.get("model") or "").strip()
@@ -1772,7 +2011,9 @@ def chat_completions(data: dict, request: Request):
     ratio = "9:16"
     output_resolution = "2K"
     duration = int(video_conf["duration"]) if video_conf else 12
-    video_resolution = str(video_conf.get("resolution") or "720p") if video_conf else "720p"
+    video_resolution = (
+        str(video_conf.get("resolution") or "720p") if video_conf else "720p"
+    )
     if video_conf:
         ratio = str(video_conf.get("aspect_ratio") or ratio)
     video_engine = str(video_conf.get("engine") or "sora2") if video_conf else ""
@@ -1781,11 +2022,21 @@ def chat_completions(data: dict, request: Request):
     if is_video_model:
         generate_audio, negative_prompt = _resolve_video_options(data)
     else:
-        ratio, output_resolution, resolved_model_id = _resolve_ratio_and_resolution(data, model_id or None)
+        ratio, output_resolution, resolved_model_id = _resolve_ratio_and_resolution(
+            data, model_id or None
+        )
 
     token = token_manager.get_available()
     if not token:
-        return JSONResponse(status_code=503, content={"error": {"message": "No active tokens available in the pool", "type": "server_error"}})
+        return JSONResponse(
+            status_code=503,
+            content={
+                "error": {
+                    "message": "No active tokens available in the pool",
+                    "type": "server_error",
+                }
+            },
+        )
 
     try:
         input_images = _load_input_images(data.get("messages") or [])
@@ -1811,9 +2062,13 @@ def chat_completions(data: dict, request: Request):
                     ratio,
                     video_resolution,
                 )
-                source_image_ids.append(client.upload_image(token, prepared_bytes, prepared_mime))
+                source_image_ids.append(
+                    client.upload_image(token, prepared_bytes, prepared_mime)
+                )
 
-            _set_request_task_progress(request, task_status="IN_PROGRESS", task_progress=0.0)
+            _set_request_task_progress(
+                request, task_status="IN_PROGRESS", task_progress=0.0
+            )
 
             def _video_progress_cb(update: dict):
                 _set_request_task_progress(
@@ -1847,9 +2102,13 @@ def chat_completions(data: dict, request: Request):
             response_label = "generated video"
         else:
             for image_bytes, image_mime in input_images:
-                source_image_ids.append(client.upload_image(token, image_bytes, image_mime or "image/jpeg"))
+                source_image_ids.append(
+                    client.upload_image(token, image_bytes, image_mime or "image/jpeg")
+                )
 
-            _set_request_task_progress(request, task_status="IN_PROGRESS", task_progress=0.0)
+            _set_request_task_progress(
+                request, task_status="IN_PROGRESS", task_progress=0.0
+            )
 
             def _image_progress_cb(update: dict):
                 _set_request_task_progress(
@@ -1894,25 +2153,72 @@ def chat_completions(data: dict, request: Request):
             "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
         }
         if bool(data.get("stream", False)):
-            return StreamingResponse(_sse_chat_stream(response_payload), media_type="text/event-stream")
+            return StreamingResponse(
+                _sse_chat_stream(response_payload), media_type="text/event-stream"
+            )
         return response_payload
     except QuotaExhaustedError:
-        _set_request_task_progress(request, task_status="FAILED", task_progress=0.0, error="Token quota exhausted")
+        _set_request_task_progress(
+            request,
+            task_status="FAILED",
+            task_progress=0.0,
+            error="Token quota exhausted",
+        )
         token_manager.report_exhausted(token)
-        return JSONResponse(status_code=429, content={"error": {"message": "Token quota exhausted", "type": "rate_limit_error"}})
+        return JSONResponse(
+            status_code=429,
+            content={
+                "error": {
+                    "message": "Token quota exhausted",
+                    "type": "rate_limit_error",
+                }
+            },
+        )
     except AuthError:
-        _set_request_task_progress(request, task_status="FAILED", task_progress=0.0, error="Token invalid or expired")
+        _set_request_task_progress(
+            request,
+            task_status="FAILED",
+            task_progress=0.0,
+            error="Token invalid or expired",
+        )
         token_manager.report_invalid(token)
-        return JSONResponse(status_code=401, content={"error": {"message": "Token invalid or expired", "type": "authentication_error"}})
+        return JSONResponse(
+            status_code=401,
+            content={
+                "error": {
+                    "message": "Token invalid or expired",
+                    "type": "authentication_error",
+                }
+            },
+        )
     except UpstreamTemporaryError as exc:
-        _set_request_task_progress(request, task_status="FAILED", task_progress=0.0, error=str(exc))
-        return JSONResponse(status_code=503, content={"error": {"message": str(exc), "type": "server_error"}})
+        _set_request_task_progress(
+            request, task_status="FAILED", task_progress=0.0, error=str(exc)
+        )
+        return JSONResponse(
+            status_code=503,
+            content={"error": {"message": str(exc), "type": "server_error"}},
+        )
     except Exception as exc:
-        _set_request_task_progress(request, task_status="FAILED", task_progress=0.0, error=str(exc))
-        return JSONResponse(status_code=500, content={"error": {"message": str(exc), "type": "server_error"}})
+        logger.exception(
+            "Unhandled error in /v1/chat/completions log_id=%s model=%s resolved_model=%s is_video_model=%s proxy_used=%s",
+            getattr(request.state, "log_id", ""),
+            model_id,
+            resolved_model_id,
+            is_video_model,
+            bool(client.proxy),
+        )
+        _set_request_task_progress(
+            request, task_status="FAILED", task_progress=0.0, error=str(exc)
+        )
+        return JSONResponse(
+            status_code=500,
+            content={"error": {"message": str(exc), "type": "server_error"}},
+        )
 
 
 if __name__ == "__main__":
     import uvicorn
+
     # 为了在容器中更好工作，使用环境变量
     uvicorn.run("app:app", host="0.0.0.0", port=int(os.getenv("PORT", "6001")))
