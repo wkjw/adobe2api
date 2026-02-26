@@ -18,6 +18,13 @@ PROFILE_FILE = CONFIG_DIR / "refresh_profile.json"
 
 
 class RefreshManager:
+    DEFAULT_REFRESH_URL = "https://adobeid-na1.services.adobe.com/ims/check/v6/token?jslVersion=v2-v0.48.0-1-g1e322cb"
+    DEFAULT_SCOPE = (
+        "AdobeID,firefly_api,openid,pps.read,pps.write,additional_info.projectedProductContext,"
+        "additional_info.ownerOrg,uds_read,uds_write,ab.manage,read_organizations,"
+        "additional_info.roles,account_cluster.read,creative_production"
+    )
+
     def __init__(self):
         self._lock = threading.Lock()
         self._runner_started = False
@@ -262,6 +269,95 @@ class RefreshManager:
                         "name": str(p.get("name") or "").strip(),
                         "enabled": bool(p.get("enabled", True)),
                         "bundle": bundle,
+                    }
+                )
+            return out
+
+    @staticmethod
+    def _cookie_string_from_input(cookie_input) -> str:
+        if isinstance(cookie_input, str):
+            text = cookie_input.strip()
+            if text.lower().startswith("cookie:"):
+                text = text.split(":", 1)[1].strip()
+            return text
+
+        if isinstance(cookie_input, dict):
+            if isinstance(cookie_input.get("cookies"), list):
+                cookie_input = cookie_input.get("cookies")
+            elif isinstance(cookie_input.get("cookie"), (str, list, dict)):
+                cookie_input = cookie_input.get("cookie")
+            else:
+                return ""
+
+        if isinstance(cookie_input, list):
+            pairs: List[str] = []
+            for item in cookie_input:
+                if isinstance(item, str):
+                    txt = item.strip()
+                    if txt:
+                        pairs.append(txt)
+                    continue
+                if not isinstance(item, dict):
+                    continue
+                name = str(item.get("name") or "").strip()
+                value = str(item.get("value") or "").strip()
+                if not name:
+                    continue
+                pairs.append(f"{name}={value}")
+            return "; ".join(pairs)
+        return ""
+
+    def import_cookie(self, cookie_input, name: Optional[str] = None) -> Dict:
+        cookie = self._cookie_string_from_input(cookie_input)
+        if not cookie:
+            raise ValueError("cookie is required")
+        bundle = {
+            "endpoint": {
+                "url": self.DEFAULT_REFRESH_URL,
+                "method": "POST",
+                "form": {
+                    "client_id": "clio-playground-web",
+                    "guest_allowed": "true",
+                    "scope": self.DEFAULT_SCOPE,
+                },
+                "headers": {
+                    "Accept": "*/*",
+                    "Accept-Language": "zh-CN,zh;q=0.9",
+                    "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+                    "Cookie": cookie,
+                    "Origin": "https://firefly.adobe.com",
+                    "Referer": "https://firefly.adobe.com/",
+                    "User-Agent": "Mozilla/5.0",
+                },
+            }
+        }
+        return self.import_bundle(bundle, name=name)
+
+    def export_cookies(self, ids: Optional[List[str]] = None) -> List[Dict]:
+        selected_ids = None
+        if isinstance(ids, list):
+            normalized = [str(x or "").strip() for x in ids]
+            selected_ids = {x for x in normalized if x}
+        with self._lock:
+            out: List[Dict] = []
+            for p in self._profiles:
+                pid = str(p.get("id") or "").strip()
+                if selected_ids is not None and pid not in selected_ids:
+                    continue
+                endpoint = (
+                    p.get("endpoint") if isinstance(p.get("endpoint"), dict) else {}
+                )
+                headers = (
+                    endpoint.get("headers")
+                    if isinstance(endpoint.get("headers"), dict)
+                    else {}
+                )
+                cookie = str(headers.get("Cookie") or "").strip()
+                out.append(
+                    {
+                        "id": pid,
+                        "name": str(p.get("name") or "").strip(),
+                        "cookie": cookie,
                     }
                 )
             return out

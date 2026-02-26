@@ -34,8 +34,10 @@ document.addEventListener("DOMContentLoaded", () => {
   const tokenModal = document.getElementById("tokenModal");
   const tokenModalCloseBtn = document.getElementById("tokenModalCloseBtn");
   const openRefreshModalBtn = document.getElementById("openRefreshModalBtn");
+  const openCookieImportBtn = document.getElementById("openCookieImportBtn");
   const exportTokensBtn = document.getElementById("exportTokensBtn");
   const exportBundlesBtn = document.getElementById("exportBundlesBtn");
+  const exportCookiesBtn = document.getElementById("exportCookiesBtn");
   const refreshModal = document.getElementById("refreshModal");
   const refreshModalCloseBtn = document.getElementById("refreshModalCloseBtn");
   const refreshBtn = document.getElementById("refreshBtn");
@@ -160,17 +162,17 @@ document.addEventListener("DOMContentLoaded", () => {
       const dateStr = d.toLocaleString();
 
       const refreshTokenBtn = t.auto_refresh
-        ? `<button class="action-mini" onclick="refreshToken('${t.id}')">刷新</button>`
-        : `<button class="action-mini" disabled title="仅自动刷新 token 支持刷新">刷新</button>`;
+        ? `<button class="action-mini" onclick="refreshToken('${t.id}')">刷新Token</button>`
+        : `<button class="action-mini" disabled title="仅自动刷新 token 支持刷新">刷新Token</button>`;
       const statusBtn = isFrozen
         ? `<button class="action-mini" disabled title="额度耗尽或已失效 token 不可启用">不可启用</button>`
-        : `<button class="action-mini" onclick="toggleToken('${t.id}', '${isStatusActive ? 'disabled' : 'active'}')">${isStatusActive ? '禁用' : '启用'}</button>`;
+        : `<button class="action-mini" onclick="toggleToken('${t.id}', '${isStatusActive ? 'disabled' : 'active'}')">${isStatusActive ? '禁用Token' : '启用Token'}</button>`;
       const actionsGrid = `
         <div class="action-btns">
-          <button class="action-mini" onclick="refreshTokenCredits('${t.id}')">积分</button>
+          <button class="action-mini" onclick="refreshTokenCredits('${t.id}')">刷新积分</button>
           ${refreshTokenBtn}
           ${statusBtn}
-          <button class="action-mini danger" onclick="deleteToken('${t.id}')">删除</button>
+          <button class="action-mini danger" onclick="deleteToken('${t.id}')">删除Token</button>
         </div>
       `;
 
@@ -290,6 +292,13 @@ document.addEventListener("DOMContentLoaded", () => {
     openRefreshModalBtn.addEventListener("click", async () => {
       await loadRefreshProfiles();
       openDialog(refreshModal);
+    });
+  }
+  if (openCookieImportBtn) {
+    openCookieImportBtn.addEventListener("click", async () => {
+      await loadRefreshProfiles();
+      openDialog(refreshModal);
+      if (cookieInput) cookieInput.focus();
     });
   }
   if (refreshModalCloseBtn) {
@@ -496,6 +505,48 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  if (exportCookiesBtn) {
+    exportCookiesBtn.addEventListener("click", async () => {
+      exportCookiesBtn.disabled = true;
+      try {
+        const selectedIds = Array.from(refreshSelectedIds);
+        const payload = selectedIds.length ? { ids: selectedIds } : { ids: null };
+        const res = await fetch("/api/v1/refresh-profiles/export-cookies", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) {
+          const txt = await res.text();
+          throw new Error(txt || "导出 Cookie 失败");
+        }
+        const data = await res.json();
+        const total = Number(data.total || 0);
+        if (total <= 0) {
+          alert("没有可导出的 Cookie");
+          return;
+        }
+        const output = {
+          exported_at: Math.floor(Date.now() / 1000),
+          total,
+          items: Array.isArray(data.items)
+            ? data.items.map((it) => ({
+                id: it.id,
+                name: it.name,
+                cookie: it.cookie,
+              }))
+            : [],
+        };
+        downloadJsonFile(`refresh-cookies-export-${nowStamp()}.json`, output);
+        alert(`导出成功：${total} 个 Cookie`);
+      } catch (err) {
+        alert(err.message || "导出 Cookie 失败");
+      } finally {
+        exportCookiesBtn.disabled = false;
+      }
+    });
+  }
+
   // Config Management
   const confApiKey = document.getElementById("confApiKey");
   const confUseProxy = document.getElementById("confUseProxy");
@@ -513,6 +564,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const refreshBundleInput = document.getElementById("refreshBundleInput");
   const refreshBundleFile = document.getElementById("refreshBundleFile");
   const importRefreshBtn = document.getElementById("importRefreshBtn");
+  const cookieInput = document.getElementById("cookieInput");
+  const cookieFile = document.getElementById("cookieFile");
+  const importCookieBtn = document.getElementById("importCookieBtn");
   const refreshProfiles = document.getElementById("refreshProfiles");
   const refreshMsg = document.getElementById("refreshMsg");
   let latestRefreshProfiles = [];
@@ -954,6 +1008,152 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  function cookieToHeaderString(value) {
+    if (typeof value === "string") {
+      const txt = value.trim();
+      if (!txt) return "";
+      if (txt.toLowerCase().startsWith("cookie:")) {
+        return txt.slice(7).trim();
+      }
+      return txt;
+    }
+    if (Array.isArray(value)) {
+      const pairs = [];
+      value.forEach((item) => {
+        if (typeof item === "string") {
+          const txt = item.trim();
+          if (txt) pairs.push(txt);
+          return;
+        }
+        if (!item || typeof item !== "object") return;
+        const name = String(item.name || "").trim();
+        if (!name) return;
+        pairs.push(`${name}=${String(item.value || "").trim()}`);
+      });
+      return pairs.join("; ");
+    }
+    if (value && typeof value === "object") {
+      if (Array.isArray(value.cookies)) return cookieToHeaderString(value.cookies);
+      if (value.cookie != null) return cookieToHeaderString(value.cookie);
+    }
+    return "";
+  }
+
+  function toCookieBatchItems(value) {
+    if (Array.isArray(value)) {
+      if (value.length > 0 && value.every((item) => item && typeof item === "object" && "name" in item && "value" in item)) {
+        const cookie = cookieToHeaderString(value);
+        return cookie ? [{ name: null, cookie }] : [];
+      }
+      return value.map((item, idx) => {
+        if (!item || typeof item !== "object") {
+          throw new Error(`第 ${idx + 1} 项不是对象`);
+        }
+        const cookie = cookieToHeaderString(item.cookie != null ? item.cookie : item.cookies != null ? item.cookies : item);
+        if (!cookie) {
+          throw new Error(`第 ${idx + 1} 项缺少 cookie`);
+        }
+        return {
+          name: String(item.name || "").trim() || null,
+          cookie,
+        };
+      });
+    }
+    if (value && typeof value === "object") {
+      if (Array.isArray(value.items)) return toCookieBatchItems(value.items);
+      const cookie = cookieToHeaderString(value.cookie != null ? value.cookie : value.cookies != null ? value.cookies : value);
+      if (!cookie) throw new Error("cookie 内容为空");
+      return [{ name: String(value.name || "").trim() || null, cookie }];
+    }
+    const cookie = cookieToHeaderString(value);
+    if (!cookie) throw new Error("cookie 内容为空");
+    return [{ name: null, cookie }];
+  }
+
+  async function importCookies() {
+    const text = String(cookieInput?.value || "").trim();
+    if (!text) {
+      showMsg(refreshMsg, "请先粘贴或上传 Cookie", true);
+      return;
+    }
+
+    let items = [];
+    try {
+      let parsed = text;
+      try {
+        parsed = JSON.parse(text);
+      } catch (_) {
+        parsed = text;
+      }
+      items = toCookieBatchItems(parsed);
+    } catch (err) {
+      showMsg(refreshMsg, err.message || "Cookie 解析失败", true);
+      return;
+    }
+
+    if (!items.length) {
+      showMsg(refreshMsg, "未找到可导入的 Cookie", true);
+      return;
+    }
+
+    try {
+      const endpoint = items.length > 1
+        ? "/api/v1/refresh-profiles/import-cookie-batch"
+        : "/api/v1/refresh-profiles/import-cookie";
+      const payload = items.length > 1
+        ? { items }
+        : { cookie: items[0].cookie, name: items[0].name || null };
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        let detailText = "Cookie 导入失败";
+        try {
+          const body = await res.json();
+          const detail = body?.detail;
+          if (typeof detail === "string") {
+            detailText = detail;
+          } else if (detail && typeof detail === "object") {
+            const failedCount = Number(detail.failed_count || 0);
+            const refreshFailedCount = Number(detail.refresh_failed_count || 0);
+            detailText = `导入失败（成功 ${Number(detail.imported_count || 0)}，导入失败 ${failedCount}，刷新失败 ${refreshFailedCount}）`;
+          }
+        } catch (_) {
+          const txt = await res.text();
+          if (txt) detailText = txt;
+        }
+        throw new Error(detailText);
+      }
+
+      const result = await res.json();
+      if (items.length > 1) {
+        const okCount = Number(result.imported_count || 0);
+        const failedCount = Number(result.failed_count || 0);
+        const refreshFailedCount = Number(result.refresh_failed_count || 0);
+        showMsg(
+          refreshMsg,
+          `批量 Cookie 导入完成：成功 ${okCount}，导入失败 ${failedCount}，刷新失败 ${refreshFailedCount}`,
+          failedCount > 0 || refreshFailedCount > 0
+        );
+      } else {
+        const refreshError = String(result.refresh_error || "").trim();
+        if (refreshError) {
+          showMsg(refreshMsg, `Cookie 导入成功，但自动刷新失败：${refreshError}`, true);
+        } else {
+          showMsg(refreshMsg, "Cookie 导入成功，并已自动刷新", false);
+        }
+      }
+      if (cookieInput) cookieInput.value = "";
+      if (cookieFile) cookieFile.value = "";
+      await loadRefreshProfiles();
+      await loadTokens();
+    } catch (err) {
+      showMsg(refreshMsg, err.message || "Cookie 导入失败", true);
+    }
+  }
+
   async function setRefreshProfileEnabled(profileId, enabled) {
     try {
       const res = await fetch(`/api/v1/refresh-profiles/${encodeURIComponent(profileId)}/enabled`, {
@@ -1024,7 +1224,45 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  if (cookieFile) {
+    cookieFile.addEventListener("change", async () => {
+      const files = cookieFile.files ? Array.from(cookieFile.files) : [];
+      if (!files.length) return;
+      try {
+        if (files.length === 1) {
+          const text = await files[0].text();
+          if (cookieInput) cookieInput.value = text;
+          return;
+        }
+
+        const items = [];
+        for (const file of files) {
+          const raw = await file.text();
+          const baseName = String(file.name || "").replace(/\.(json|txt)$/i, "").trim();
+          let parsed = raw;
+          try {
+            parsed = JSON.parse(raw);
+          } catch (_) {
+            // plain text cookie string
+          }
+          const cookie = cookieToHeaderString(parsed);
+          if (!cookie) continue;
+          items.push({
+            name: baseName || null,
+            cookie,
+          });
+        }
+        if (cookieInput) {
+          cookieInput.value = JSON.stringify(items, null, 2);
+        }
+      } catch (err) {
+        showMsg(refreshMsg, "读取 Cookie 文件失败", true);
+      }
+    });
+  }
+
   if (importRefreshBtn) importRefreshBtn.addEventListener("click", importRefreshBundle);
+  if (importCookieBtn) importCookieBtn.addEventListener("click", importCookies);
   // profile operation handlers are attached as window methods above.
 
   async function loadLogs() {
@@ -1126,7 +1364,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const progressCell = taskStatus === "IN_PROGRESS"
         ? `<span class="status-badge status-active">${Number.isFinite(taskProgressRaw) ? Math.round(taskProgressRaw) : 0}%</span>`
         : `<span style="color:#7f96ad;">-</span>`;
-      const previewUrl = String(item.preview_url || "").trim();
+      const previewUrl = normalizePreviewUrl(String(item.preview_url || "").trim());
       const previewKind = String(item.preview_kind || "").trim();
       const tokenName = String(item.token_account_name || "").trim();
       const tokenEmail = String(item.token_account_email || "").trim();
@@ -1173,6 +1411,28 @@ document.addEventListener("DOMContentLoaded", () => {
     const lowered = String(url || "").toLowerCase();
     if (/(\.mp4|\.webm|\.ogg)(\?|$)/.test(lowered)) return "video";
     return "image";
+  }
+
+  function normalizePreviewUrl(url) {
+    const raw = String(url || "").trim();
+    if (!raw) return "";
+
+    if (/^https?:\/\//i.test(raw)) {
+      try {
+        const u = new URL(raw);
+        if (/^\/(generated)\//.test(u.pathname)) {
+          return `${window.location.origin}${u.pathname}${u.search || ""}`;
+        }
+      } catch (_) {
+        // ignore parse errors and return original
+      }
+      return raw;
+    }
+
+    if (raw.startsWith("/")) {
+      return `${window.location.origin}${raw}`;
+    }
+    return raw;
   }
 
   function closePreview() {

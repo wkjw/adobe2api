@@ -32,8 +32,10 @@
         <div class="actions">
           <button id="openAddTokenModalBtn">添加 Token</button>
           <button id="openRefreshModalBtn" class="secondary">导入 Refresh Bundle</button>
+          <button id="openCookieImportBtn" class="secondary">导入 Cookie</button>
           <button id="exportTokensBtn" class="secondary">导出 Token</button>
           <button id="exportBundlesBtn" class="secondary">导出 Refresh Bundle</button>
+          <button id="exportCookiesBtn" class="secondary">导出 Cookie</button>
         </div>
       </section>
 
@@ -259,6 +261,23 @@
 
         <div class="actions">
           <button id="importRefreshBtn">导入</button>
+        </div>
+
+        <hr style="border: none; border-top: 1px solid var(--border); margin: 14px 0;" />
+
+        <div class="form-group">
+          <label for="cookieInput">导入 Cookie（支持单个或批量）</label>
+          <textarea id="cookieInput" rows="7" placeholder="支持：\n1) Cookie 字符串：k1=v1; k2=v2\n2) 浏览器导出的 cookie 数组 JSON\n3) 批量：[{\"name\":\"账号A\",\"cookie\":\"k=v;...\"},{\"name\":\"账号B\",\"cookie\":[...]}]"></textarea>
+          <p class="help">导入后会自动立即刷新一次。批量导入建议使用数组格式。</p>
+        </div>
+
+        <div class="form-group">
+          <label for="cookieFile">或上传 Cookie 文件（支持多选）</label>
+          <input type="file" id="cookieFile" accept="text/plain,.txt,application/json,.json" multiple />
+        </div>
+
+        <div class="actions">
+          <button id="importCookieBtn" class="secondary">导入 Cookie</button>
         </div>
 
         <div id="refreshProfiles" class="refresh-status">暂无自动刷新配置</div>

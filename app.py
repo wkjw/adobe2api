@@ -1770,6 +1770,20 @@ class RefreshProfileBatchImportRequest(BaseModel):
     items: List[RefreshProfileBatchImportItem]
 
 
+class RefreshCookieImportRequest(BaseModel):
+    cookie: Any
+    name: Optional[str] = None
+
+
+class RefreshCookieBatchImportItem(BaseModel):
+    cookie: Any
+    name: Optional[str] = None
+
+
+class RefreshCookieBatchImportRequest(BaseModel):
+    items: List[RefreshCookieBatchImportItem]
+
+
 class RefreshProfileEnabledRequest(BaseModel):
     enabled: bool
 
@@ -2146,11 +2160,29 @@ def _require_service_api_key(request: Request) -> None:
 
 
 def _public_image_url(request: Request, job_id: str) -> str:
-    return str(request.url_for("generated_files", path=f"{job_id}.png"))
+    return _public_generated_url(request, f"{job_id}.png")
 
 
 def _public_generated_url(request: Request, filename: str) -> str:
-    return str(request.url_for("generated_files", path=filename))
+    safe_name = str(filename or "").lstrip("/")
+    path = f"/generated/{safe_name}"
+
+    override = str(
+        os.getenv("ADOBE_PUBLIC_BASE_URL") or os.getenv("PUBLIC_BASE_URL") or ""
+    ).strip()
+    if override:
+        return f"{override.rstrip('/')}{path}"
+
+    forwarded_host = str(request.headers.get("x-forwarded-host") or "").strip()
+    if forwarded_host:
+        forwarded_proto = str(
+            request.headers.get("x-forwarded-proto") or "http"
+        ).strip()
+        return f"{forwarded_proto}://{forwarded_host}{path}"
+
+    # Prefer relative URLs so Docker/Reverse Proxy deployments remain reachable
+    # even when request host resolution is internal.
+    return path
 
 
 def _video_ext_from_meta(meta: dict) -> str:
@@ -2581,10 +2613,42 @@ def refresh_profiles_export(req: ExportSelectionRequest):
     }
 
 
+@app.post("/api/v1/refresh-profiles/export-cookies")
+def refresh_profiles_export_cookies(req: ExportSelectionRequest):
+    profile_ids = req.ids if isinstance(req.ids, list) else None
+    exported = refresh_manager.export_cookies(profile_ids)
+    return {
+        "status": "ok",
+        "total": len(exported),
+        "selected": bool(profile_ids),
+        "items": exported,
+    }
+
+
 @app.post("/api/v1/refresh-profiles/import")
 def refresh_profiles_import(req: RefreshProfileImportRequest):
     try:
         profile = refresh_manager.import_bundle(req.bundle, name=req.name)
+        refresh_result = None
+        refresh_error = ""
+        try:
+            refresh_result = refresh_manager.refresh_once(str(profile.get("id") or ""))
+        except Exception as exc:
+            refresh_error = str(exc)
+        return {
+            "status": "ok" if not refresh_error else "partial",
+            "profile": profile,
+            "refresh_result": refresh_result,
+            "refresh_error": refresh_error,
+        }
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@app.post("/api/v1/refresh-profiles/import-cookie")
+def refresh_profiles_import_cookie(req: RefreshCookieImportRequest):
+    try:
+        profile = refresh_manager.import_cookie(req.cookie, name=req.name)
         refresh_result = None
         refresh_error = ""
         try:
@@ -2613,6 +2677,70 @@ def refresh_profiles_import_batch(req: RefreshProfileBatchImportRequest):
     for idx, item in enumerate(req.items):
         try:
             profile = refresh_manager.import_bundle(item.bundle, name=item.name)
+            imported.append(profile)
+            try:
+                refresh_result = refresh_manager.refresh_once(
+                    str(profile.get("id") or "")
+                )
+                refreshed.append(
+                    {
+                        "index": idx,
+                        "profile_id": profile.get("id"),
+                        "profile_name": profile.get("name"),
+                        "result": refresh_result,
+                    }
+                )
+            except Exception as exc:
+                refresh_failed.append(
+                    {
+                        "index": idx,
+                        "profile_id": profile.get("id"),
+                        "profile_name": profile.get("name"),
+                        "detail": str(exc),
+                    }
+                )
+        except ValueError as exc:
+            failed.append(
+                {
+                    "index": idx,
+                    "name": item.name,
+                    "detail": str(exc),
+                }
+            )
+
+    result = {
+        "status": (
+            "ok"
+            if (not failed and not refresh_failed)
+            else ("partial" if imported else "failed")
+        ),
+        "total": len(req.items),
+        "imported_count": len(imported),
+        "failed_count": len(failed),
+        "refreshed_count": len(refreshed),
+        "refresh_failed_count": len(refresh_failed),
+        "profiles": imported,
+        "failed": failed,
+        "refreshed": refreshed,
+        "refresh_failed": refresh_failed,
+    }
+    if not imported:
+        raise HTTPException(status_code=400, detail=result)
+    return result
+
+
+@app.post("/api/v1/refresh-profiles/import-cookie-batch")
+def refresh_profiles_import_cookie_batch(req: RefreshCookieBatchImportRequest):
+    if not req.items:
+        raise HTTPException(status_code=400, detail="items is required")
+
+    imported = []
+    failed = []
+    refreshed = []
+    refresh_failed = []
+    for idx, item in enumerate(req.items):
+        try:
+            profile = refresh_manager.import_cookie(item.cookie, name=item.name)
             imported.append(profile)
             try:
                 refresh_result = refresh_manager.refresh_once(
@@ -2864,7 +2992,6 @@ def create_job(data: GenerateRequest, request: Request):
         output_resolution = model_conf["output_resolution"]
 
     job = store.create(prompt=prompt, aspect_ratio=ratio)
-    base_url = str(request.base_url).rstrip("/")
 
     def runner(job_id: str):
         store.update(job_id, status="running", progress=5.0)
@@ -2887,7 +3014,7 @@ def create_job(data: GenerateRequest, request: Request):
                 out_path = GENERATED_DIR / f"{job_id}.png"
                 out_path.write_bytes(image_bytes)
                 progress = float(meta.get("progress") or 100.0)
-                image_url = f"{base_url}/generated/{job_id}.png"
+                image_url = _public_image_url(request, job_id)
                 store.update(
                     job_id,
                     status="succeeded",
