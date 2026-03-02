@@ -141,13 +141,16 @@ Veo31 video models:
 
 Veo31 Ref video models (reference-image mode):
 
-- Pattern: `firefly-veo31-ref-8s-16x9-{resolution}`
+- Pattern: `firefly-veo31-ref-{duration}-{ratio}-{resolution}`
+- Duration: `4s` / `6s` / `8s`
+- Ratio: `16x9` / `9x16`
 - Resolution: `1080p` / `720p`
 - Always uses reference image mode (not first/last frame mode)
 - Supports up to 3 reference images (mapped to upstream `referenceBlobs[].usage="asset"`)
 - Examples:
-  - `firefly-veo31-ref-8s-16x9-1080p`
-  - `firefly-veo31-ref-8s-16x9-720p`
+  - `firefly-veo31-ref-4s-9x16-720p`
+  - `firefly-veo31-ref-6s-16x9-1080p`
+  - `firefly-veo31-ref-8s-9x16-1080p`
 
 Veo31 Fast video models:
 

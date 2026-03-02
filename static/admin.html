@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/static/admin.css?v=20260302-2" />
+  <link rel="stylesheet" href="/static/admin.css?v=20260302-4" />
 </head>
 <body>
   <div class="bg-orb bg-orb-a"></div>
@@ -86,104 +86,119 @@
       <section class="config-card card">
         <h2>网络与代理设置</h2>
         <div class="config-form">
-          <div class="form-group">
-            <label for="confApiKey">服务 API Key</label>
-            <input type="text" id="confApiKey" class="input-text" placeholder="留空表示不鉴权，例如：my-secret-key" />
-            <p class="help">用于访问本服务接口（如 /v1/images/generations）。支持 Bearer 或 X-API-Key。</p>
+          <div class="config-category-tabs" role="tablist" aria-label="配置分类">
+            <button class="config-cat-btn active" type="button" data-target="cfg-account">账户与安全</button>
+            <button class="config-cat-btn" type="button" data-target="cfg-network">代理与网络</button>
+            <button class="config-cat-btn" type="button" data-target="cfg-retry">重试与容错</button>
+            <button class="config-cat-btn" type="button" data-target="cfg-storage">刷新与存储</button>
           </div>
 
-          <div class="form-group" style="margin-top: 12px;">
-            <label for="confAdminUsername">管理员账号</label>
-            <input type="text" id="confAdminUsername" class="input-text" placeholder="默认 admin" />
-            <p class="help">管理后台登录账号。</p>
-          </div>
-
-          <div class="form-group" style="margin-top: 12px;">
-            <label for="confAdminPassword">管理员密码</label>
-            <input type="password" id="confAdminPassword" class="input-text" placeholder="默认 admin" />
-            <p class="help">管理后台登录密码。</p>
-          </div>
-
-          <div class="form-group" style="margin-top: 12px;">
-            <label for="confPublicBaseUrl">公共 URL (Public Base URL)</label>
-            <input type="text" id="confPublicBaseUrl" class="input-text" placeholder="例如：http://127.0.0.1:6001/ 或 https://your-domain/antigravity" />
-            <p class="help">用于生成图片/视频预览的绝对链接。建议填写外部可访问地址。</p>
-          </div>
-          
-          <div class="form-group" style="margin-top: 16px;">
-            <label class="checkbox-label" style="user-select: none;">
-              <input type="checkbox" id="confUseProxy" />
-              启用 HTTP 代理
-            </label>
-            <p class="help">开启后所有请求将通过下方配置的代理服务器发送，防止 IP 被封禁。</p>
-          </div>
-          
-          <div class="form-group">
-            <label for="confProxy">代理服务器地址 (Proxy URL)</label>
-            <input type="text" id="confProxy" class="input-text" placeholder="例如：http://127.0.0.1:7890" />
-          </div>
-
-          <div class="form-group">
-            <label for="confGenerateTimeout">生成超时 (秒)</label>
-            <input type="number" id="confGenerateTimeout" class="input-text" step="1" placeholder="默认 300" />
-            <p class="help">默认 300 秒。支持任意正整数，按你的业务场景设置。</p>
-          </div>
-
-          <div class="form-group">
-            <label class="checkbox-label" style="user-select: none;">
-              <input type="checkbox" id="confRetryEnabled" />
-              启用自动重试
-            </label>
-            <p class="help">当命中可重试错误时，自动切换到下一个 token 重试。</p>
-          </div>
-
-          <div class="form-group">
-            <label for="confRetryMaxAttempts">最大尝试次数 (含首次)</label>
-            <input type="number" id="confRetryMaxAttempts" class="input-text" min="1" max="10" step="1" placeholder="默认 3" />
-          </div>
-
-          <div class="form-group">
-            <label for="confRetryBackoffSeconds">重试退避基数 (秒)</label>
-            <input type="number" id="confRetryBackoffSeconds" class="input-text" min="0" max="30" step="0.1" placeholder="默认 1.0" />
-            <p class="help">第 n 次重试等待时间 = 基数 * 2^(n-1)。</p>
-          </div>
-
-          <div class="form-group">
-            <label for="confRetryOnStatusCodes">可重试状态码</label>
-            <input type="text" id="confRetryOnStatusCodes" class="input-text" placeholder="例如：429,451,500,502,503,504" />
-          </div>
-
-          <div class="form-group">
-            <label for="confRetryOnErrorTypes">可重试错误类型</label>
-            <input type="text" id="confRetryOnErrorTypes" class="input-text" placeholder="例如：timeout,connection,proxy" />
-          </div>
-
-          <div class="form-group">
-            <label for="confTokenRotationStrategy">Token 轮换策略</label>
-            <select id="confTokenRotationStrategy" class="input-select">
-              <option value="round_robin">round_robin（始终轮换）</option>
-              <option value="random">random（随机轮换）</option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label for="confRefreshIntervalHours">自动刷新间隔 (小时)</label>
-            <input type="number" id="confRefreshIntervalHours" class="input-text" min="1" max="24" step="1" placeholder="默认 15" />
-            <p class="help">范围 1-24 小时。后台将严格按该间隔刷新。</p>
-          </div>
-
-          <div class="config-inline-row">
-            <div class="form-group inline-item">
-              <label for="confGeneratedMaxSizeMb">生成文件空间上限 (MB)</label>
-              <input type="number" id="confGeneratedMaxSizeMb" class="input-text" min="100" max="102400" step="1" placeholder="默认 1024" />
+          <section id="cfg-account" class="config-cat-pane active">
+            <div class="form-group">
+              <label for="confApiKey">服务 API Key</label>
+              <input type="text" id="confApiKey" class="input-text" placeholder="留空表示不鉴权，例如：my-secret-key" />
+              <p class="help">用于访问本服务接口（如 /v1/images/generations）。支持 Bearer 或 X-API-Key。</p>
             </div>
-            <div class="form-group inline-item">
-              <label for="confGeneratedPruneSizeMb">触发后清理量 (MB)</label>
-              <input type="number" id="confGeneratedPruneSizeMb" class="input-text" min="10" max="10240" step="1" placeholder="默认 200" />
+
+            <div class="form-group">
+              <label for="confAdminUsername">管理员账号</label>
+              <input type="text" id="confAdminUsername" class="input-text" placeholder="默认 admin" />
+              <p class="help">管理后台登录账号。</p>
             </div>
-          </div>
-          <p id="generatedUsageInfo" class="help">当前占用：- MB（- 个文件）</p>
-          <p class="help">超过上限后按最旧文件优先清理；最新生成文件会被保护，不会被立即删掉。</p>
+
+            <div class="form-group">
+              <label for="confAdminPassword">管理员密码</label>
+              <input type="password" id="confAdminPassword" class="input-text" placeholder="默认 admin" />
+              <p class="help">管理后台登录密码。</p>
+            </div>
+
+            <div class="form-group">
+              <label for="confPublicBaseUrl">公共 URL (Public Base URL)</label>
+              <input type="text" id="confPublicBaseUrl" class="input-text" placeholder="例如：http://127.0.0.1:6001/ 或 https://your-domain/antigravity" />
+              <p class="help">用于生成图片/视频预览的绝对链接。建议填写外部可访问地址。</p>
+            </div>
+          </section>
+
+          <section id="cfg-network" class="config-cat-pane">
+            <div class="form-group">
+              <label class="checkbox-label" style="user-select: none;">
+                <input type="checkbox" id="confUseProxy" />
+                启用 HTTP 代理
+              </label>
+              <p class="help">开启后所有请求将通过下方配置的代理服务器发送，防止 IP 被封禁。</p>
+            </div>
+
+            <div class="form-group">
+              <label for="confProxy">代理服务器地址 (Proxy URL)</label>
+              <input type="text" id="confProxy" class="input-text" placeholder="例如：http://127.0.0.1:7890" />
+            </div>
+
+            <div class="form-group">
+              <label for="confGenerateTimeout">生成超时 (秒)</label>
+              <input type="number" id="confGenerateTimeout" class="input-text" step="1" placeholder="默认 300" />
+              <p class="help">默认 300 秒。支持任意正整数，按你的业务场景设置。</p>
+            </div>
+          </section>
+
+          <section id="cfg-retry" class="config-cat-pane">
+            <div class="form-group">
+              <label class="checkbox-label" style="user-select: none;">
+                <input type="checkbox" id="confRetryEnabled" />
+                启用自动重试
+              </label>
+              <p class="help">当命中可重试错误时，自动切换到下一个 token 重试。</p>
+            </div>
+
+            <div class="form-group">
+              <label for="confRetryMaxAttempts">最大尝试次数 (含首次)</label>
+              <input type="number" id="confRetryMaxAttempts" class="input-text" min="1" max="10" step="1" placeholder="默认 3" />
+            </div>
+
+            <div class="form-group">
+              <label for="confRetryBackoffSeconds">重试退避基数 (秒)</label>
+              <input type="number" id="confRetryBackoffSeconds" class="input-text" min="0" max="30" step="0.1" placeholder="默认 1.0" />
+              <p class="help">第 n 次重试等待时间 = 基数 * 2^(n-1)。</p>
+            </div>
+
+            <div class="form-group">
+              <label for="confRetryOnStatusCodes">可重试状态码</label>
+              <input type="text" id="confRetryOnStatusCodes" class="input-text" placeholder="例如：429,451,500,502,503,504" />
+            </div>
+
+            <div class="form-group">
+              <label for="confRetryOnErrorTypes">可重试错误类型</label>
+              <input type="text" id="confRetryOnErrorTypes" class="input-text" placeholder="例如：timeout,connection,proxy" />
+            </div>
+
+            <div class="form-group">
+              <label for="confTokenRotationStrategy">Token 轮换策略</label>
+              <select id="confTokenRotationStrategy" class="input-select">
+                <option value="round_robin">round_robin（始终轮换）</option>
+                <option value="random">random（随机轮换）</option>
+              </select>
+            </div>
+          </section>
+
+          <section id="cfg-storage" class="config-cat-pane">
+            <div class="form-group">
+              <label for="confRefreshIntervalHours">自动刷新间隔 (小时)</label>
+              <input type="number" id="confRefreshIntervalHours" class="input-text" min="1" max="24" step="1" placeholder="默认 15" />
+              <p class="help">范围 1-24 小时。后台将严格按该间隔刷新。</p>
+            </div>
+
+            <div class="config-inline-row">
+              <div class="form-group inline-item">
+                <label for="confGeneratedMaxSizeMb">生成文件空间上限 (MB)</label>
+                <input type="number" id="confGeneratedMaxSizeMb" class="input-text" min="100" max="102400" step="1" placeholder="默认 1024" />
+              </div>
+              <div class="form-group inline-item">
+                <label for="confGeneratedPruneSizeMb">触发后清理量 (MB)</label>
+                <input type="number" id="confGeneratedPruneSizeMb" class="input-text" min="10" max="10240" step="1" placeholder="默认 200" />
+              </div>
+            </div>
+            <p id="generatedUsageInfo" class="help">当前占用：- MB（- 个文件）</p>
+            <p class="help">超过上限后按最旧文件优先清理；最新生成文件会被保护，不会被立即删掉。</p>
+          </section>
 
           <div class="actions" style="margin-top: 24px;">
             <button id="saveConfigBtn">保存配置</button>
@@ -337,6 +352,8 @@
     </div>
   </div>
 
-  <script src="/static/admin.js?v=20260302-2"></script>
+  <div id="appToast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="/static/admin.js?v=20260302-6"></script>
 </body>
 </html>

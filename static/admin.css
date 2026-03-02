@@ -140,6 +140,50 @@ h2 {
   gap: 16px;
 }
 
+.config-category-tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.config-cat-btn {
+  border: 1px solid transparent;
+  background: rgba(255, 255, 255, 0.08);
+  color: #cce0f5;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.config-cat-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.config-cat-btn.active {
+  background: rgba(44, 199, 170, 0.16);
+  color: #6ff2d7;
+  border-color: rgba(77, 226, 196, 0.4);
+}
+
+.config-cat-pane {
+  display: none;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.02);
+  gap: 12px;
+  flex-direction: column;
+}
+
+.config-cat-pane.active {
+  display: flex;
+}
+
 .form-group {
   display: flex;
   flex-direction: column;
@@ -756,6 +800,38 @@ td input[type="checkbox"] {
   background: rgba(255, 255, 255, 0.2);
 }
 
+.toast {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(12, 20, 31, 0.92);
+  color: #dbe9f8;
+  border: 1px solid rgba(142, 181, 221, 0.28);
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.35);
+  font-size: 13px;
+  line-height: 1.4;
+  z-index: 1200;
+  opacity: 0;
+  transform: translateY(8px);
+  pointer-events: none;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.toast.success {
+  border-color: rgba(77, 226, 196, 0.45);
+}
+
+.toast.error {
+  border-color: rgba(255, 180, 188, 0.45);
+}
+
 @media (max-width: 900px) {
   .stats-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -777,6 +853,11 @@ td input[type="checkbox"] {
 @media (max-width: 560px) {
   .stats-grid {
     grid-template-columns: 1fr;
+  }
+
+  .config-category-tabs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
   }
 
   .config-inline-row {

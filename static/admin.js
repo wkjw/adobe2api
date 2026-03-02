@@ -324,7 +324,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     addBtn.disabled = false;
   });
 
-  refreshBtn.addEventListener("click", loadTokens);
+  refreshBtn.addEventListener("click", async () => {
+    showToast("Token 列表刷新中...", false, { duration: 0 });
+    try {
+      await loadTokens();
+      showToast("Token 列表已刷新", false);
+    } catch (err) {
+      showToast("Token 列表刷新失败", true);
+    }
+  });
 
   if (tokenSelectAll) {
     tokenSelectAll.addEventListener("change", () => {
@@ -420,6 +428,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   };
 
   window.refreshToken = async (id) => {
+    showToast("Token 刷新中...", false, { duration: 0 });
     try {
       const res = await fetch(`/api/v1/tokens/${id}/refresh`, { method: "POST" });
       if (!res.ok) {
@@ -431,17 +440,21 @@ document.addEventListener("DOMContentLoaded", async () => {
           detail = await res.text();
         }
         alert(`刷新失败: ${detail || "unknown error"}`);
+        showToast(`Token 刷新失败：${detail || "unknown error"}`, true);
         return;
       }
       showMsg(refreshMsg, "刷新成功", false);
+      showToast("Token 刷新成功", false);
       await loadTokens();
       await loadRefreshProfiles();
     } catch (err) {
       alert("刷新失败");
+      showToast("Token 刷新失败", true);
     }
   };
 
   window.refreshTokenCredits = async (id) => {
+    showToast("Token 积分刷新中...", false, { duration: 0 });
     try {
       const res = await fetch(`/api/v1/tokens/${id}/credits/refresh`, { method: "POST" });
       if (!res.ok) {
@@ -453,11 +466,14 @@ document.addEventListener("DOMContentLoaded", async () => {
           detail = await res.text();
         }
         alert(detail || "刷新积分失败");
+        showToast(`刷新积分失败：${detail || "unknown error"}`, true);
         return;
       }
       await loadTokens();
+      showToast("Token 积分刷新成功", false);
     } catch (err) {
       alert("刷新积分失败");
+      showToast("Token 积分刷新失败", true);
     }
   };
 
@@ -487,6 +503,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (refreshCreditsBatchBtn) {
     refreshCreditsBatchBtn.addEventListener("click", async () => {
       refreshCreditsBatchBtn.disabled = true;
+      showToast("批量刷新积分中...", false, { duration: 0 });
       try {
         const res = await fetch("/api/v1/tokens/credits/refresh-batch", {
           method: "POST",
@@ -501,16 +518,16 @@ document.addEventListener("DOMContentLoaded", async () => {
           } catch (_) {
             detail = await res.text();
           }
-          alert(detail || "批量刷新积分失败");
+          showToast(`批量刷新积分失败：${detail || "unknown error"}`, true);
           return;
         }
         const data = await res.json();
         const ok = Number(data.refreshed_count || 0);
         const fail = Number(data.failed_count || 0);
-        alert(`批量刷新积分完成：成功 ${ok}，失败 ${fail}`);
+        showToast(`批量刷新完成：成功 ${ok}，失败 ${fail}`, false);
         await loadTokens();
       } catch (err) {
-        alert("批量刷新积分失败");
+        showToast("批量刷新积分失败", true);
       } finally {
         refreshCreditsBatchBtn.disabled = false;
       }
@@ -650,6 +667,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   const confGeneratedMaxSizeMb = document.getElementById("confGeneratedMaxSizeMb");
   const confGeneratedPruneSizeMb = document.getElementById("confGeneratedPruneSizeMb");
   const generatedUsageInfo = document.getElementById("generatedUsageInfo");
+  const configCatBtns = document.querySelectorAll(".config-cat-btn");
+  const configCatPanes = document.querySelectorAll(".config-cat-pane");
   const saveConfigBtn = document.getElementById("saveConfigBtn");
   const configMsg = document.getElementById("configMsg");
   const refreshBundleInput = document.getElementById("refreshBundleInput");
@@ -679,10 +698,36 @@ document.addEventListener("DOMContentLoaded", async () => {
   const previewContent = document.getElementById("previewContent");
   const previewCloseBtn = document.getElementById("previewCloseBtn");
   const previewDownloadBtn = document.getElementById("previewDownloadBtn");
+  const appToast = document.getElementById("appToast");
   const LOGS_PAGE_SIZE = 20;
   let logsCurrentPage = 1;
   let logsTotalPages = 1;
   let logsRunningTotal = 0;
+
+  function switchConfigPane(targetId) {
+    if (!targetId) return;
+    configCatBtns.forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.target === targetId);
+    });
+    configCatPanes.forEach((pane) => {
+      pane.classList.toggle("active", pane.id === targetId);
+    });
+  }
+
+  configCatBtns.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      switchConfigPane(String(btn.dataset.target || ""));
+    });
+  });
+
+  if (configCatBtns.length > 0) {
+    const currentActive = Array.from(configCatBtns).find((btn) =>
+      btn.classList.contains("active")
+    );
+    switchConfigPane(
+      String(currentActive?.dataset?.target || configCatBtns[0]?.dataset?.target || "")
+    );
+  }
 
   if (refreshProfiles) {
     refreshProfiles.addEventListener("change", (event) => {
@@ -819,12 +864,15 @@ document.addEventListener("DOMContentLoaded", async () => {
       });
       if (res.ok) {
         showMsg(configMsg, "配置已保存", false);
+        showToast("配置已保存", false);
         await loadConfig();
       } else {
         showMsg(configMsg, "保存失败，请检查服务状态", true);
+        showToast("保存失败，请检查服务状态", true);
       }
     } catch (err) {
       showMsg(configMsg, err.message, true);
+      showToast(err.message || "保存失败", true);
     }
     saveConfigBtn.disabled = false;
   });
@@ -1725,6 +1773,25 @@ document.addEventListener("DOMContentLoaded", async () => {
     el.textContent = text;
     el.style.color = isError ? "#ffb4bc" : "#4de2c4";
     setTimeout(() => { el.textContent = ""; }, 3000);
+  }
+
+  let toastTimer = null;
+  function showToast(text, isError = false, options = {}) {
+    if (!appToast) return;
+    const duration = Number(options?.duration ?? 2200);
+    appToast.textContent = String(text || "").trim();
+    appToast.classList.remove("success", "error", "show");
+    appToast.classList.add(isError ? "error" : "success");
+    appToast.classList.add("show");
+    if (toastTimer) {
+      clearTimeout(toastTimer);
+      toastTimer = null;
+    }
+    if (duration > 0) {
+      toastTimer = setTimeout(() => {
+        appToast.classList.remove("show");
+      }, duration);
+    }
   }
 
   // Init

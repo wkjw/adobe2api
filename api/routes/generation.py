@@ -414,11 +414,6 @@ def build_generation_router(
                         and video_reference_mode == "image"
                     ):
                         max_video_inputs = 3
-                        if ratio != "16:9" or duration != 8:
-                            raise HTTPException(
-                                status_code=400,
-                                detail="veo31 image reference mode requires 16:9 and 8s",
-                            )
                     else:
                         max_video_inputs = (
                             2 if video_engine in {"veo31-fast", "veo31-standard"} else 1
