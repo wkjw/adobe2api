@@ -468,7 +468,7 @@ def build_generation_router(
             def _run_once(token: str):
                 source_image_ids: list[str] = []
                 image_url = ""
-                response_label = "generated image"
+                response_content = ""
 
                 if is_video_model:
                     if (
@@ -532,7 +532,9 @@ def build_generation_router(
                     on_generated_file_written(out_path, old_size, len(video_bytes))
                     image_url = public_generated_url(request, filename)
                     set_request_preview(request, image_url, kind="video")
-                    response_label = "generated video"
+                    response_content = (
+                        f"```html\n<video src='{image_url}' controls></video>\n```"
+                    )
                 else:
                     for image_bytes, image_mime in input_images:
                         source_image_ids.append(
@@ -579,6 +581,7 @@ def build_generation_router(
                     on_generated_file_written(out_path, old_size, len(image_bytes))
                     image_url = public_image_url(request, job_id)
                     set_request_preview(request, image_url, kind="image")
+                    response_content = f"![Generated Image]({image_url})"
 
                 response_payload = {
                     "id": f"chatcmpl-{uuid.uuid4().hex[:24]}",
@@ -590,7 +593,7 @@ def build_generation_router(
                             "index": 0,
                             "message": {
                                 "role": "assistant",
-                                "content": f"![{response_label}]({image_url})\\n\\n{image_url}",
+                                "content": response_content,
                             },
                             "finish_reason": "stop",
                         }
